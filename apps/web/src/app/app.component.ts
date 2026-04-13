@@ -12,6 +12,16 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
         <ul>
           <li><a routerLink="/products" routerLinkActive="active">Products</a></li>
         </ul>
+
+        <h1 class="section-label">Admin</h1>
+        <ul>
+          <li>
+            <a routerLink="/admin/inventory" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">Inventory</a>
+          </li>
+          <li>
+            <a routerLink="/admin/inventory/low-stock" routerLinkActive="active">Low Stock</a>
+          </li>
+        </ul>
       </nav>
       <section class="content">
         <router-outlet />
@@ -35,6 +45,9 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
         color: var(--muted);
         text-transform: uppercase;
         letter-spacing: 0.08em;
+      }
+      .nav h1.section-label {
+        margin-top: 20px;
       }
       .nav ul {
         list-style: none;

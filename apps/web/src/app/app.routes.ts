@@ -20,4 +20,25 @@ export const routes: Routes = [
         (m) => m.ProductDetailComponent,
       ),
   },
+  {
+    path: 'admin/inventory',
+    loadComponent: () =>
+      import('./features/admin/inventory-list.component').then(
+        (m) => m.InventoryListComponent,
+      ),
+  },
+  {
+    path: 'admin/inventory/low-stock',
+    loadComponent: () =>
+      import('./features/admin/low-stock.component').then(
+        (m) => m.LowStockComponent,
+      ),
+  },
+  {
+    path: 'admin/inventory/:id',
+    loadComponent: () =>
+      import('./features/admin/inventory-edit.component').then(
+        (m) => m.InventoryEditComponent,
+      ),
+  },
 ];
