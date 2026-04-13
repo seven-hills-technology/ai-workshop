@@ -9,6 +9,8 @@ type Product = {
   category: string;
   thumbnail: string;
   rating: number;
+  stock: number;
+  availabilityStatus: string;
 };
 
 @Component({
@@ -17,7 +19,14 @@ type Product = {
   imports: [RouterLink],
   template: `
     <a [routerLink]="['/products', product().id]" class="card">
-      <img [src]="product().thumbnail" [alt]="product().title" class="thumbnail" />
+      <div class="image-wrap">
+        <img [src]="product().thumbnail" [alt]="product().title" class="thumbnail" />
+        @if (product().availabilityStatus === 'Out of Stock') {
+          <span class="stock-badge out">Out of Stock</span>
+        } @else if (product().availabilityStatus === 'Low Stock') {
+          <span class="stock-badge low">Only {{ product().stock }} left</span>
+        }
+      </div>
       <div class="body">
         <span class="category">{{ product().category }}</span>
         <h3 class="title">{{ product().title }}</h3>
@@ -53,11 +62,32 @@ type Product = {
         box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
         transform: translateY(-2px);
       }
+      .image-wrap {
+        position: relative;
+      }
       .thumbnail {
         width: 100%;
         height: 200px;
         object-fit: cover;
         background: #f5f5f5;
+        display: block;
+      }
+      .stock-badge {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        padding: 4px 10px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #fff;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+      }
+      .stock-badge.low {
+        background: #d97706;
+      }
+      .stock-badge.out {
+        background: #dc2626;
       }
       .body {
         padding: 12px;
