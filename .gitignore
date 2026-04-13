@@ -22,3 +22,6 @@ npm-debug.log*
 
 # test output
 coverage/
+
+# database
+apps/api/db/

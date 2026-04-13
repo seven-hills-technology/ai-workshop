@@ -37,4 +37,18 @@ export const routes: Routes = [
         (m) => m.AnalyticsComponent,
       ),
   },
+  {
+    path: 'products',
+    loadComponent: () =>
+      import('./features/products/product-grid.component').then(
+        (m) => m.ProductGridComponent,
+      ),
+  },
+  {
+    path: 'products/:id',
+    loadComponent: () =>
+      import('./features/products/product-detail.component').then(
+        (m) => m.ProductDetailComponent,
+      ),
+  },
 ];
