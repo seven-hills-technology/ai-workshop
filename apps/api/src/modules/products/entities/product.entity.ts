@@ -37,6 +37,9 @@ export class Product {
   @Column({ type: 'int' })
   stock!: number;
 
+  @Column({ type: 'int', default: 10 })
+  lowStockThreshold!: number;
+
   @Column()
   availabilityStatus!: string;
 

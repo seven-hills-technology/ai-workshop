@@ -384,16 +384,17 @@ export class ProductDetailComponent implements OnInit {
   readonly stockLabel = computed(() => {
     const p = this.product();
     if (!p) return '';
-    if (p.stock === 0) return 'Out of Stock';
-    if (p.stock <= 10) return `Low Stock (${p.stock} left)`;
-    return 'In Stock';
+    if (p.availabilityStatus === 'Low Stock') {
+      return `Low Stock (${p.stock} left)`;
+    }
+    return p.availabilityStatus;
   });
 
   readonly stockClass = computed(() => {
     const p = this.product();
     if (!p) return '';
-    if (p.stock === 0) return 'out-of-stock';
-    if (p.stock <= 10) return 'low-stock';
+    if (p.availabilityStatus === 'Out of Stock') return 'out-of-stock';
+    if (p.availabilityStatus === 'Low Stock') return 'low-stock';
     return 'in-stock';
   });
 
@@ -404,7 +405,7 @@ export class ProductDetailComponent implements OnInit {
 
   ngOnInit(): void {
     this.http
-      .get<Product>(`http://localhost:3000/products/${this.id()}`)
+      .get<Product>(`http://localhost:7800/products/${this.id()}`)
       .subscribe({
         next: (product) => {
           this.product.set(product);
