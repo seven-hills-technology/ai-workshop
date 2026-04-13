@@ -76,6 +76,7 @@ export class SeedService implements OnModuleInit {
         product.thumbnail = item.thumbnail;
         product.rating = item.rating;
         product.stock = item.stock;
+        product.lowStockThreshold = 10;
         product.availabilityStatus = item.availabilityStatus;
         product.tags = item.tags;
         product.warrantyInformation = item.warrantyInformation;
