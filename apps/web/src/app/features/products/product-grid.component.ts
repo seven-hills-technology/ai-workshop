@@ -186,7 +186,7 @@ export class ProductGridComponent implements OnInit {
     });
 
     this.http
-      .get<string[]>('http://localhost:3000/products/categories')
+      .get<string[]>('http://localhost:7800/products/categories')
       .subscribe((cats) => this.categories.set(cats));
   }
 
@@ -216,7 +216,7 @@ export class ProductGridComponent implements OnInit {
     this.loading.set(true);
     const skip = reset ? 0 : this.products().length;
 
-    let url = `http://localhost:3000/products?skip=${skip}&limit=${this.limit}`;
+    let url = `http://localhost:7800/products?skip=${skip}&limit=${this.limit}`;
     if (this.selectedCategory) url += `&category=${encodeURIComponent(this.selectedCategory)}`;
     if (this.searchQuery) url += `&search=${encodeURIComponent(this.searchQuery)}`;
 

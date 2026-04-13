@@ -16,6 +16,7 @@
             "index": "src/index.html",
             "browser": "src/main.ts",
             "tsConfig": "tsconfig.app.json",
+            "polyfills": ["zone.js"],
             "assets": [],
             "styles": ["src/styles.css"]
           }
@@ -23,7 +24,7 @@
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
           "options": {
-            "port": 4200
+            "port": 7801
           },
           "configurations": {
             "development": {

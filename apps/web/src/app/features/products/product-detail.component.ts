@@ -404,7 +404,7 @@ export class ProductDetailComponent implements OnInit {
 
   ngOnInit(): void {
     this.http
-      .get<Product>(`http://localhost:3000/products/${this.id()}`)
+      .get<Product>(`http://localhost:7800/products/${this.id()}`)
       .subscribe({
         next: (product) => {
           this.product.set(product);

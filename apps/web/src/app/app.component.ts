@@ -10,13 +10,6 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
       <nav class="nav">
         <h1>Workshop</h1>
         <ul>
-          <li><a routerLink="/hello" routerLinkActive="active">Hello</a></li>
-          <li><a routerLink="/todos" routerLinkActive="active">Todos</a></li>
-          <li>
-            <a routerLink="/notifications" routerLinkActive="active">Notifications</a>
-          </li>
-          <li><a routerLink="/reports" routerLinkActive="active">Reports</a></li>
-          <li><a routerLink="/analytics" routerLinkActive="active">Analytics</a></li>
           <li><a routerLink="/products" routerLinkActive="active">Products</a></li>
         </ul>
       </nav>
