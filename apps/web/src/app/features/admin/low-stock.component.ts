@@ -1,8 +1,8 @@
 import { HttpClient } from '@angular/common/http';
 import { Component, OnInit, signal } from '@angular/core';
 import { InventoryTableComponent } from './inventory-table.component';
+import { API_BASE } from '../../core/config';
 import {
-  API_BASE,
   InventoryListResponse,
   InventoryProduct,
 } from './inventory.types';

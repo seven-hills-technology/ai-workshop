@@ -2,7 +2,8 @@ import { HttpClient } from '@angular/common/http';
 import { Component, OnInit, computed, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Location } from '@angular/common';
-import { API_BASE, InventoryProduct } from './inventory.types';
+import { API_BASE } from '../../core/config';
+import { InventoryProduct } from './inventory.types';
 
 @Component({
   selector: 'app-inventory-edit',

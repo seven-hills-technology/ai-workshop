@@ -7,7 +7,9 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
+import { AdminGuard } from '../auth/guards/admin.guard';
 import { ProductsService } from './products.service';
 import {
   BulkAdjustInput,
@@ -37,11 +39,13 @@ export class ProductsController {
     return this.products.getCategories();
   }
 
+  @UseGuards(AdminGuard)
   @Post('inventory/bulk')
   bulkAdjust(@Body() input: BulkAdjustInput): Promise<BulkAdjustResult> {
     return this.products.bulkAdjust(input);
   }
 
+  @UseGuards(AdminGuard)
   @Patch(':id/inventory')
   updateInventory(
     @Param('id', ParseIntPipe) id: number,

@@ -4,8 +4,8 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { InventoryTableComponent } from './inventory-table.component';
 import { BulkActionBarComponent } from './bulk-action-bar.component';
+import { API_BASE } from '../../core/config';
 import {
-  API_BASE,
   BulkAdjustResult,
   BulkOperation,
   InventoryListResponse,

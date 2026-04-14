@@ -21,5 +21,3 @@ export type BulkAdjustResult = {
   succeeded: { id: number; stock: number }[];
   failed: { id: number; reason: string }[];
 };
-
-export const API_BASE = 'http://localhost:7800';
