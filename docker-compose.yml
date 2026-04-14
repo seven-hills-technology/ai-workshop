@@ -1,0 +1,23 @@
+services:
+  api:
+    build: .
+    command: npx nest start --watch
+    working_dir: /app/apps/api
+    ports:
+      - "7800:7800"
+    volumes:
+      - ./apps/api/src:/app/apps/api/src
+      - ./apps/api/db:/app/apps/api/db
+    environment:
+      - WATCHPACK_POLLING=true
+
+  web:
+    build: .
+    command: npx ng serve --host 0.0.0.0 --poll 2000
+    working_dir: /app/apps/web
+    ports:
+      - "7801:7801"
+    volumes:
+      - ./apps/web/src:/app/apps/web/src
+    depends_on:
+      - api
