@@ -1,7 +1,8 @@
 import { HttpClient } from '@angular/common/http';
-import { Component, OnInit, signal, computed } from '@angular/core';
+import { Component, OnInit, effect, signal, computed, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { CartService } from '../../core/cart/cart.service';
 import { ProductCardComponent } from './product-card.component';
 
 type Product = {
@@ -174,11 +175,22 @@ export class ProductGridComponent implements OnInit {
   private searchTimeout: ReturnType<typeof setTimeout> | null = null;
   private readonly limit = 20;
 
+  private readonly cartService = inject(CartService);
+
   constructor(
     private readonly http: HttpClient,
     private readonly route: ActivatedRoute,
     private readonly router: Router,
-  ) {}
+  ) {
+    // When the cart mutates (add/update/remove/clear), re-fetch the products
+    // currently shown so each card's availableStock reflects the new
+    // reservation totals without forcing the user to refresh the page.
+    effect(() => {
+      const v = this.cartService.mutationVersion();
+      if (v === 0) return;
+      this.refreshLoaded();
+    });
+  }
 
   ngOnInit(): void {
     this.route.queryParams.subscribe((params) => {
@@ -230,6 +242,22 @@ export class ProductGridComponent implements OnInit {
       }
       this.total.set(res.total);
       this.loading.set(false);
+    });
+  }
+
+  // Re-fetch the same window of products that's currently loaded, in place,
+  // so cards repaint with fresh availableStock without scrolling jumps.
+  private refreshLoaded(): void {
+    const length = this.products().length;
+    if (length === 0) return;
+
+    let url = `http://localhost:7800/products?skip=0&limit=${length}`;
+    if (this.selectedCategory) url += `&category=${encodeURIComponent(this.selectedCategory)}`;
+    if (this.searchQuery) url += `&search=${encodeURIComponent(this.searchQuery)}`;
+
+    this.http.get<ProductListResponse>(url).subscribe((res) => {
+      this.products.set(res.products);
+      this.total.set(res.total);
     });
   }
 }

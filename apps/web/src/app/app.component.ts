@@ -4,11 +4,18 @@ import { AuthService } from './core/auth/auth.service';
 import { CartService } from './core/cart/cart.service';
 import { CartDrawerService } from './core/cart/cart-drawer.service';
 import { CartDrawerComponent } from './features/cart/cart-drawer.component';
+import { CartExpiredModalComponent } from './features/cart/cart-expired-modal.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, CartDrawerComponent],
+  imports: [
+    RouterOutlet,
+    RouterLink,
+    RouterLinkActive,
+    CartDrawerComponent,
+    CartExpiredModalComponent,
+  ],
   template: `
     @if (authService.isLoggedIn()) {
       <main class="shell">
@@ -57,6 +64,7 @@ import { CartDrawerComponent } from './features/cart/cart-drawer.component';
       </main>
 
       <app-cart-drawer />
+      <app-cart-expired-modal />
     } @else {
       <router-outlet />
     }

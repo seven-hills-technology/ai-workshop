@@ -1,5 +1,5 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, signal, computed, inject, input } from '@angular/core';
+import { Component, signal, computed, effect, inject, input } from '@angular/core';
 import { Location } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CartDrawerService } from '../../core/cart/cart-drawer.service';
@@ -456,7 +456,7 @@ type Product = {
     `,
   ],
 })
-export class ProductDetailComponent implements OnInit {
+export class ProductDetailComponent {
   readonly id = input.required<string>();
 
   readonly product = signal<Product | null>(null);
@@ -501,20 +501,41 @@ export class ProductDetailComponent implements OnInit {
   private readonly cartService = inject(CartService);
   private readonly cartDrawerService = inject(CartDrawerService);
   private errorTimer: ReturnType<typeof setTimeout> | null = null;
+  private hasLoaded = false;
 
   constructor(
     private readonly http: HttpClient,
     private readonly location: Location,
-  ) {}
+  ) {
+    // Re-fetch the product whenever the id changes OR a cart mutation
+    // happens, so the displayed availableStock / stock label stays in sync
+    // with the user's own cart adds/removes without a page refresh.
+    effect(() => {
+      const id = this.id();
+      this.cartService.mutationVersion();
+      this.loadProduct(id);
+    });
+  }
 
-  ngOnInit(): void {
+  private loadProduct(id: string): void {
     this.http
-      .get<Product>(`http://localhost:7800/products/${this.id()}`)
+      .get<Product>(`http://localhost:7800/products/${id}`)
       .subscribe({
         next: (product) => {
           this.product.set(product);
-          this.selectedImage.set(product.thumbnail);
-          this.quantity.set(product.availableStock > 0 ? 1 : 0);
+          if (!this.hasLoaded) {
+            // Initial load: seed the gallery selection and a sane default qty.
+            // On subsequent refreshes (cart mutations), preserve user state.
+            this.selectedImage.set(product.thumbnail);
+            this.quantity.set(product.availableStock > 0 ? 1 : 0);
+            this.hasLoaded = true;
+          } else {
+            // Cap quantity to the new max so the +button stays correct.
+            const max = product.availableStock;
+            if (this.quantity() > max) {
+              this.quantity.set(Math.max(1, max));
+            }
+          }
           this.loading.set(false);
         },
         error: () => {
