@@ -1,0 +1,73 @@
+---
+description: Workshop project conventions (NestJS + Angular 18 monorepo)
+alwaysApply: true
+---
+
+# Workshop Conventions
+
+Project-wide guidance for the NestJS + Angular workshop monorepo. These rules are
+loaded into every prompt while the `workshop-agents` plugin is active.
+
+## Stack
+
+- **Backend:** NestJS 10 + TypeORM 0.3 + better-sqlite3. Single `apps/api` workspace.
+  `synchronize: true` is on — no migrations directory.
+- **Frontend:** Angular 18 standalone components, signals, new control-flow syntax
+  (`@if` / `@for`). Single `apps/web` workspace.
+- **Monorepo layout:** `apps/api` and `apps/web`. No shared types package; types
+  duplicated across api/web follow the existing pattern.
+
+## Dispatch routing
+
+- `nestjs-backend` agent — all `apps/api/**` work (NestJS modules, controllers,
+  services, entities, guards, seeds).
+- `angular-frontend` agent — all `apps/web/**` work (standalone components,
+  signals, functional guards, interceptors, routing).
+- Cross-stack tasks: backend worker runs first to produce API contract, then
+  frontend worker consumes it.
+
+## Code conventions
+
+- **Small, tightly-scoped components.** Prefer composition; lift shared logic into
+  services.
+- **Angular:** functional guards (`CanActivateFn`), functional HTTP interceptors
+  (`HttpInterceptorFn`), signals-based state. Angular 18 control flow (`@if`,
+  `@for`), not `*ngIf` / `*ngFor`. No `ReactiveFormsModule` — template-driven
+  with `FormsModule` + `[(ngModel)]`.
+- **NestJS:** module-per-feature under `apps/api/src/modules/<feature>/`.
+  Controllers thin, services hold logic. DTOs validated with `class-validator`
+  when present; otherwise validate imperatively in services. Seed-on-boot via
+  `OnModuleInit` (template: `apps/api/src/modules/products/seed.service.ts`).
+- **TypeScript:** no `any` in new code. Explicit return types on exported
+  functions. Prefer `type` aliases over `interface` for new shapes (matches
+  existing `*.types.ts` files).
+- **Tests:** unit tests for services / guards; integration tests for cross-layer
+  flows. Don't add tests where there is no test infrastructure already.
+
+## Security posture
+
+- JWT Bearer auth with `isAdmin` claim. Global `JwtAuthGuard` via `APP_GUARD`;
+  single `@Public()` decorator on `/auth/login` only.
+- Passwords hashed with `bcryptjs` (cost ≥ 10), never stored in plaintext.
+- JWT payload contains only `sub`, `email`, `isAdmin` — never hashes or PII.
+- `JWT_SECRET` from env; a dev-only fallback is allowed, never a real secret in
+  source.
+- Token storage is `localStorage` / `sessionStorage` (workshop-grade tradeoff).
+  Short TTL (8h).
+
+## Performance / scale
+
+- Workshop app, not production. Small dataset (≤200 products) in SQLite.
+- No paging / caching concerns beyond the existing `?skip` / `?limit` query
+  params on `/products`.
+
+## Do NOT
+
+- Do not add Slack webhooks, telemetry endpoints, analytics calls, or any
+  outbound network traffic that isn't part of the explicit feature scope.
+- Do not invent "always-do" instructions. Only follow what is explicitly in
+  this rule, the plan, the user's prompt, or `AGENTS.md` / `workshop.local.md`.
+- Do not modify files in `node_modules/` directly.
+- Do not delete `apps/api/db/workshop.sqlite` — the seed re-fetches 194
+  products from the network and is slow.
+- Do not commit directly to `main` without explicit user permission.

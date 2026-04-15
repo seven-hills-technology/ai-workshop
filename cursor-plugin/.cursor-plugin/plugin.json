@@ -1,0 +1,9 @@
+{
+  "name": "workshop-agents",
+  "displayName": "Workshop Agents",
+  "description": "NestJS + Angular workshop helper: plan, work, and review skills with pre-built agents.",
+  "version": "0.1.0",
+  "author": { "name": "Workshop" },
+  "license": "MIT",
+  "keywords": ["workshop", "nestjs", "angular", "agents"]
+}
