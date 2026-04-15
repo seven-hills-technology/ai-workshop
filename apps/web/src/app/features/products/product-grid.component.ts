@@ -1,32 +1,22 @@
-import { HttpClient } from '@angular/common/http';
-import { Component, OnInit, effect, signal, computed, inject } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  OnInit,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CartService } from '../../core/cart/cart.service';
 import { ProductCardComponent } from './product-card.component';
-
-type Product = {
-  id: number;
-  title: string;
-  description: string;
-  price: number;
-  discountPercentage: number;
-  category: string;
-  brand: string;
-  thumbnail: string;
-  rating: number;
-  stock: number;
-  availabilityStatus: string;
-  availableStock: number;
-  reservedStock: number;
-};
-
-type ProductListResponse = {
-  products: Product[];
-  total: number;
-  skip: number;
-  limit: number;
-};
+import {
+  ProductListItem,
+  ProductsApiService,
+} from './products-api.service';
 
 @Component({
   selector: 'app-product-grid',
@@ -68,6 +58,10 @@ type ProductListResponse = {
           <app-product-card [product]="product" />
         }
       </div>
+
+      @if (errorMessage()) {
+        <div class="error" role="alert">{{ errorMessage() }}</div>
+      }
 
       @if (hasMore()) {
         <div class="load-more">
@@ -157,14 +151,30 @@ type ProductListResponse = {
         color: var(--muted, #888);
         font-size: 1rem;
       }
+      .error {
+        margin: 16px 0;
+        padding: 10px 14px;
+        border: 1px solid #fecaca;
+        background: #fef2f2;
+        color: #b91c1c;
+        border-radius: 6px;
+        font-size: 0.9rem;
+      }
     `,
   ],
 })
 export class ProductGridComponent implements OnInit {
-  readonly products = signal<Product[]>([]);
+  private readonly api = inject(ProductsApiService);
+  private readonly cartService = inject(CartService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
+
+  readonly products = signal<ProductListItem[]>([]);
   readonly categories = signal<string[]>([]);
   readonly total = signal(0);
   readonly loading = signal(false);
+  readonly errorMessage = signal<string | null>(null);
   readonly hasMore = computed(
     () => this.products().length < this.total(),
   );
@@ -175,33 +185,38 @@ export class ProductGridComponent implements OnInit {
   private searchTimeout: ReturnType<typeof setTimeout> | null = null;
   private readonly limit = 20;
 
-  private readonly cartService = inject(CartService);
-
-  constructor(
-    private readonly http: HttpClient,
-    private readonly route: ActivatedRoute,
-    private readonly router: Router,
-  ) {
-    // When the cart mutates (add/update/remove/clear), re-fetch the products
-    // currently shown so each card's availableStock reflects the new
-    // reservation totals without forcing the user to refresh the page.
+  constructor() {
+    // When the cart mutates, re-fetch the currently visible products so each
+    // card's availableStock reflects the new reservation totals. Wrap the call
+    // in untracked() so that signal reads inside refreshLoaded (notably
+    // this.products()) are NOT tracked as dependencies of this effect —
+    // otherwise every products.update() from loadMore would retrigger the
+    // refresh, wiping the appended page and causing a feedback loop.
     effect(() => {
       const v = this.cartService.mutationVersion();
       if (v === 0) return;
-      this.refreshLoaded();
+      untracked(() => this.refreshLoaded());
     });
   }
 
   ngOnInit(): void {
-    this.route.queryParams.subscribe((params) => {
-      this.selectedCategory = params['category'] ?? '';
-      this.searchQuery = params['search'] ?? '';
-      this.loadProducts(true);
-    });
+    this.route.queryParams
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((params) => {
+        this.selectedCategory = params['category'] ?? '';
+        this.searchQuery = params['search'] ?? '';
+        this.loadProducts(true);
+      });
 
-    this.http
-      .get<string[]>('http://localhost:7800/products/categories')
-      .subscribe((cats) => this.categories.set(cats));
+    this.api
+      .categories()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (cats) => this.categories.set(cats),
+        error: () => {
+          /* non-fatal: categories filter just stays empty */
+        },
+      });
   }
 
   onCategoryChange(category: string): void {
@@ -227,37 +242,61 @@ export class ProductGridComponent implements OnInit {
   }
 
   private loadProducts(reset: boolean): void {
+    if (this.loading()) return;
     this.loading.set(true);
+    this.errorMessage.set(null);
     const skip = reset ? 0 : this.products().length;
 
-    let url = `http://localhost:7800/products?skip=${skip}&limit=${this.limit}`;
-    if (this.selectedCategory) url += `&category=${encodeURIComponent(this.selectedCategory)}`;
-    if (this.searchQuery) url += `&search=${encodeURIComponent(this.searchQuery)}`;
-
-    this.http.get<ProductListResponse>(url).subscribe((res) => {
-      if (reset) {
-        this.products.set(res.products);
-      } else {
-        this.products.update((list) => [...list, ...res.products]);
-      }
-      this.total.set(res.total);
-      this.loading.set(false);
-    });
+    this.api
+      .list({
+        skip,
+        limit: this.limit,
+        category: this.selectedCategory || undefined,
+        search: this.searchQuery || undefined,
+      })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
+          if (reset) {
+            this.products.set(res.products);
+          } else {
+            this.products.update((list) => [...list, ...res.products]);
+          }
+          this.total.set(res.total);
+          this.loading.set(false);
+        },
+        error: () => {
+          this.loading.set(false);
+          this.errorMessage.set('Unable to load products. Please try again.');
+        },
+      });
   }
 
-  // Re-fetch the same window of products that's currently loaded, in place,
-  // so cards repaint with fresh availableStock without scrolling jumps.
+  // Re-fetch the window of products that's currently loaded so cards repaint
+  // with fresh availableStock after a cart mutation. Deferred while a
+  // loadMore is in flight — stale availability is acceptable for the split
+  // second until the next mutation or filter change reconciles.
   private refreshLoaded(): void {
+    if (this.loading()) return;
     const length = this.products().length;
     if (length === 0) return;
 
-    let url = `http://localhost:7800/products?skip=0&limit=${length}`;
-    if (this.selectedCategory) url += `&category=${encodeURIComponent(this.selectedCategory)}`;
-    if (this.searchQuery) url += `&search=${encodeURIComponent(this.searchQuery)}`;
-
-    this.http.get<ProductListResponse>(url).subscribe((res) => {
-      this.products.set(res.products);
-      this.total.set(res.total);
-    });
+    this.api
+      .list({
+        skip: 0,
+        limit: length,
+        category: this.selectedCategory || undefined,
+        search: this.searchQuery || undefined,
+      })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
+          this.products.set(res.products);
+          this.total.set(res.total);
+        },
+        error: () => {
+          /* keep stale list; next mutation will retry */
+        },
+      });
   }
 }

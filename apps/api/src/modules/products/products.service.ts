@@ -51,7 +51,7 @@ export class ProductsService {
       qb.andWhere('product.stock <= product.lowStockThreshold');
     }
 
-    qb.skip(skip).take(limit);
+    qb.orderBy('product.id', 'ASC').skip(skip).take(limit);
 
     const [products, total] = await qb.getManyAndCount();
 
