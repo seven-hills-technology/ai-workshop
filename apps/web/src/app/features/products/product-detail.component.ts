@@ -1,6 +1,9 @@
-import { HttpClient } from '@angular/common/http';
-import { Component, OnInit, signal, computed, input } from '@angular/core';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { Component, OnInit, signal, computed, inject, input } from '@angular/core';
 import { Location } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { CartDrawerService } from '../../core/cart/cart-drawer.service';
+import { CartService } from '../../core/cart/cart.service';
 
 type Review = {
   id: number;
@@ -29,6 +32,8 @@ type Product = {
   rating: number;
   stock: number;
   availabilityStatus: string;
+  availableStock: number;
+  reservedStock: number;
   tags: string[];
   warrantyInformation: string;
   shippingInformation: string;
@@ -40,7 +45,7 @@ type Product = {
 @Component({
   selector: 'app-product-detail',
   standalone: true,
-  imports: [],
+  imports: [FormsModule],
   template: `
     @if (loading()) {
       <div class="loading">Loading product...</div>
@@ -101,6 +106,39 @@ type Product = {
 
           <div class="stock" [class]="stockClass()">
             {{ stockLabel() }}
+          </div>
+
+          <div class="add-to-cart">
+            <label class="qty-label" for="qty-input">Quantity</label>
+            <div class="add-controls">
+              <input
+                id="qty-input"
+                type="number"
+                min="1"
+                [max]="maxQty()"
+                [ngModel]="quantity()"
+                (ngModelChange)="onQuantityChange($event)"
+                [disabled]="maxQty() === 0"
+                class="qty-input"
+              />
+              <button
+                type="button"
+                class="add-btn"
+                (click)="onAdd()"
+                [disabled]="addDisabled()"
+              >
+                @if (maxQty() === 0) {
+                  Out of stock
+                } @else if (adding()) {
+                  Adding…
+                } @else {
+                  Add {{ quantity() }} to cart
+                }
+              </button>
+            </div>
+            @if (errorMessage()) {
+              <div class="add-error">{{ errorMessage() }}</div>
+            }
           </div>
 
           <p class="description">{{ product()!.description }}</p>
@@ -299,6 +337,57 @@ type Product = {
         color: #dc2626;
         background: #fef2f2;
       }
+      .add-to-cart {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin: 8px 0 4px;
+      }
+      .qty-label {
+        font-size: 0.8rem;
+        color: var(--muted, #6b7280);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      .add-controls {
+        display: flex;
+        gap: 8px;
+        align-items: stretch;
+      }
+      .qty-input {
+        width: 80px;
+        padding: 8px 10px;
+        border: 1px solid var(--border, #e5e7eb);
+        border-radius: 6px;
+        font-size: 0.95rem;
+      }
+      .add-btn {
+        flex: 1;
+        padding: 8px 16px;
+        border: 1px solid var(--border, #e5e7eb);
+        border-radius: 6px;
+        background: var(--accent, #2563eb);
+        color: #fff;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .add-btn:hover:not(:disabled) {
+        filter: brightness(1.05);
+      }
+      .add-btn:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+        background: var(--muted, #6b7280);
+      }
+      .add-error {
+        color: #dc2626;
+        font-size: 0.8rem;
+        background: #fef2f2;
+        border: 1px solid #fecaca;
+        padding: 4px 8px;
+        border-radius: 4px;
+      }
       .description {
         line-height: 1.6;
         color: var(--text, #333);
@@ -384,19 +473,34 @@ export class ProductDetailComponent implements OnInit {
   readonly stockLabel = computed(() => {
     const p = this.product();
     if (!p) return '';
+    if (p.availableStock === 0) return 'Out of Stock';
     if (p.availabilityStatus === 'Low Stock') {
-      return `Low Stock (${p.stock} left)`;
+      return `Low Stock (${p.availableStock} available)`;
     }
-    return p.availabilityStatus;
+    return `In Stock (${p.availableStock} available)`;
   });
 
   readonly stockClass = computed(() => {
     const p = this.product();
     if (!p) return '';
-    if (p.availabilityStatus === 'Out of Stock') return 'out-of-stock';
+    if (p.availableStock === 0) return 'out-of-stock';
     if (p.availabilityStatus === 'Low Stock') return 'low-stock';
     return 'in-stock';
   });
+
+  readonly quantity = signal(1);
+  readonly adding = signal(false);
+  readonly errorMessage = signal<string | null>(null);
+
+  readonly maxQty = computed(() => this.product()?.availableStock ?? 0);
+
+  readonly addDisabled = computed(
+    () => this.adding() || this.maxQty() === 0 || this.quantity() < 1,
+  );
+
+  private readonly cartService = inject(CartService);
+  private readonly cartDrawerService = inject(CartDrawerService);
+  private errorTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     private readonly http: HttpClient,
@@ -410,6 +514,7 @@ export class ProductDetailComponent implements OnInit {
         next: (product) => {
           this.product.set(product);
           this.selectedImage.set(product.thumbnail);
+          this.quantity.set(product.availableStock > 0 ? 1 : 0);
           this.loading.set(false);
         },
         error: () => {
@@ -421,6 +526,47 @@ export class ProductDetailComponent implements OnInit {
 
   goBack(): void {
     this.location.back();
+  }
+
+  onQuantityChange(value: number | string | null): void {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return;
+    const max = this.maxQty();
+    const clamped = Math.max(1, Math.min(Math.floor(n), Math.max(1, max)));
+    this.quantity.set(clamped);
+  }
+
+  onAdd(): void {
+    const p = this.product();
+    if (!p || this.adding() || this.maxQty() === 0) return;
+    const qty = this.quantity();
+    if (qty < 1) return;
+
+    this.adding.set(true);
+    this.cartService.addItem(p.id, qty).subscribe({
+      next: () => {
+        this.adding.set(false);
+        this.cartDrawerService.open();
+      },
+      error: (err: unknown) => {
+        this.adding.set(false);
+        this.showError(this.extractMessage(err, p.availableStock));
+      },
+    });
+  }
+
+  private showError(message: string): void {
+    this.errorMessage.set(message);
+    if (this.errorTimer) clearTimeout(this.errorTimer);
+    this.errorTimer = setTimeout(() => this.errorMessage.set(null), 3000);
+  }
+
+  private extractMessage(err: unknown, availableStock: number): string {
+    if (err instanceof HttpErrorResponse && err.status === 409) {
+      const body = err.error as { message?: string } | null;
+      return body?.message ?? `Only ${availableStock} available`;
+    }
+    return 'Unable to add to cart. Please try again.';
   }
 
   getStars(rating: number): string {

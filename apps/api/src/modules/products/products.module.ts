@@ -6,9 +6,13 @@ import { ProductImage } from './entities/product-image.entity';
 import { ProductsController } from './products.controller';
 import { ProductsService } from './products.service';
 import { SeedService } from './seed.service';
+import { CartsModule } from '../carts/carts.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Product, Review, ProductImage])],
+  imports: [
+    TypeOrmModule.forFeature([Product, Review, ProductImage]),
+    CartsModule,
+  ],
   controllers: [ProductsController],
   providers: [ProductsService, SeedService],
 })

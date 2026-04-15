@@ -1,11 +1,14 @@
 import { Component, inject } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from './core/auth/auth.service';
+import { CartService } from './core/cart/cart.service';
+import { CartDrawerService } from './core/cart/cart-drawer.service';
+import { CartDrawerComponent } from './features/cart/cart-drawer.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, CartDrawerComponent],
   template: `
     @if (authService.isLoggedIn()) {
       <main class="shell">
@@ -16,7 +19,20 @@ import { AuthService } from './core/auth/auth.service';
             <div class="user-email" title="{{ authService.user()?.email }}">
               {{ authService.user()?.email }}
             </div>
-            <button type="button" class="logout" (click)="onLogout()">Logout</button>
+            <div class="user-actions">
+              <button type="button" class="logout" (click)="onLogout()">Logout</button>
+              <button
+                type="button"
+                class="cart-btn"
+                (click)="cartDrawerService.toggle()"
+                aria-label="Open cart"
+              >
+                Cart
+                @if (cartService.itemCount() > 0) {
+                  <span class="cart-badge">{{ cartService.itemCount() }}</span>
+                }
+              </button>
+            </div>
           </div>
 
           <ul>
@@ -39,6 +55,8 @@ import { AuthService } from './core/auth/auth.service';
           <router-outlet />
         </section>
       </main>
+
+      <app-cart-drawer />
     } @else {
       <router-outlet />
     }
@@ -101,16 +119,51 @@ import { AuthService } from './core/auth/auth.service';
         text-overflow: ellipsis;
         white-space: nowrap;
       }
+      .user-actions {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
       .logout {
-        align-self: flex-start;
         font-size: 13px;
         padding: 4px 10px;
+      }
+      .cart-btn {
+        font-size: 13px;
+        padding: 4px 10px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: var(--card-bg, #fff);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        cursor: pointer;
+        color: var(--fg);
+      }
+      .cart-btn:hover {
+        background: var(--badge-bg, #f3f4f6);
+      }
+      .cart-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 18px;
+        height: 18px;
+        padding: 0 5px;
+        border-radius: 9px;
+        background: var(--accent, #2563eb);
+        color: #fff;
+        font-size: 11px;
+        font-weight: 700;
+        line-height: 1;
       }
     `,
   ],
 })
 export class AppComponent {
   readonly authService = inject(AuthService);
+  readonly cartService = inject(CartService);
+  readonly cartDrawerService = inject(CartDrawerService);
   private readonly router = inject(Router);
 
   onLogout(): void {

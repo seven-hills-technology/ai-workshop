@@ -16,6 +16,8 @@ type Product = {
   rating: number;
   stock: number;
   availabilityStatus: string;
+  availableStock: number;
+  reservedStock: number;
 };
 
 type ProductListResponse = {

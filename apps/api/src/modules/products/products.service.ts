@@ -5,6 +5,8 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
+import { CartsService } from '../carts/carts.service';
+import { ReservedMap } from '../carts/cart.types';
 import { Product } from './entities/product.entity';
 import {
   BulkAdjustInput,
@@ -12,6 +14,8 @@ import {
   BulkAdjustResult,
   BulkAdjustSuccess,
   InventoryUpdateInput,
+  ProductDetail,
+  ProductListItem,
   ProductListQuery,
   ProductListResponse,
 } from './product.types';
@@ -21,6 +25,7 @@ export class ProductsService {
   constructor(
     @InjectRepository(Product)
     private readonly productRepo: Repository<Product>,
+    private readonly cartsService: CartsService,
   ) {}
 
   async findAll(query: ProductListQuery): Promise<ProductListResponse> {
@@ -50,18 +55,18 @@ export class ProductsService {
 
     const [products, total] = await qb.getManyAndCount();
 
-    const withAvailability = products.map((product) => {
-      product.availabilityStatus = this.computeAvailability(
-        product.stock,
-        product.lowStockThreshold,
-      );
-      return product;
-    });
+    const reserved = await this.cartsService.getReservedQuantities(
+      products.map((p) => p.id),
+    );
 
-    return { products: withAvailability, total, skip, limit };
+    const items: ProductListItem[] = products.map((product) =>
+      this.withAvailability(product, reserved),
+    );
+
+    return { products: items, total, skip, limit };
   }
 
-  async findOne(id: number): Promise<Product> {
+  async findOne(id: number): Promise<ProductDetail> {
     const product = await this.productRepo.findOne({
       where: { id },
       relations: ['reviews', 'images'],
@@ -71,12 +76,8 @@ export class ProductsService {
       throw new NotFoundException(`Product #${id} not found`);
     }
 
-    product.availabilityStatus = this.computeAvailability(
-      product.stock,
-      product.lowStockThreshold,
-    );
-
-    return product;
+    const reserved = await this.cartsService.getReservedQuantities([id]);
+    return this.withAvailability(product, reserved);
   }
 
   async getCategories(): Promise<string[]> {
@@ -204,6 +205,19 @@ export class ProductsService {
     }
 
     return { succeeded, failed };
+  }
+
+  private withAvailability<T extends Product>(
+    product: T,
+    reserved: ReservedMap,
+  ): T & { availableStock: number; reservedStock: number } {
+    const reservedStock = reserved.get(product.id) ?? 0;
+    const availableStock = Math.max(product.stock - reservedStock, 0);
+    product.availabilityStatus = this.computeAvailability(
+      availableStock,
+      product.lowStockThreshold,
+    );
+    return Object.assign(product, { availableStock, reservedStock });
   }
 
   private computeAvailability(stock: number, threshold: number): string {

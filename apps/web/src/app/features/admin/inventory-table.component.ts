@@ -2,7 +2,13 @@ import { Component, computed, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { InventoryProduct } from './inventory.types';
 
-type SortColumn = 'title' | 'category' | 'stock' | 'lowStockThreshold';
+type SortColumn =
+  | 'title'
+  | 'category'
+  | 'stock'
+  | 'reservedStock'
+  | 'availableStock'
+  | 'lowStockThreshold';
 type SortDirection = 'asc' | 'desc';
 
 @Component({
@@ -32,6 +38,12 @@ type SortDirection = 'asc' | 'desc';
           <th (click)="sort('stock')" class="sortable num">
             Stock {{ sortArrow('stock') }}
           </th>
+          <th (click)="sort('reservedStock')" class="sortable num">
+            Reserved {{ sortArrow('reservedStock') }}
+          </th>
+          <th (click)="sort('availableStock')" class="sortable num">
+            Available {{ sortArrow('availableStock') }}
+          </th>
           <th (click)="sort('lowStockThreshold')" class="sortable num">
             Threshold {{ sortArrow('lowStockThreshold') }}
           </th>
@@ -57,6 +69,8 @@ type SortDirection = 'asc' | 'desc';
             <td>{{ p.title }}</td>
             <td>{{ p.category }}</td>
             <td class="num">{{ p.stock }}</td>
+            <td class="num">{{ p.reservedStock }}</td>
+            <td class="num">{{ p.availableStock }}</td>
             <td class="num">{{ p.lowStockThreshold }}</td>
             <td>
               <span class="status" [class]="statusClass(p)">

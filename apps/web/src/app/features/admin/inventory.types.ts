@@ -4,6 +4,8 @@ export type InventoryProduct = {
   category: string;
   thumbnail: string;
   stock: number;
+  reservedStock: number;
+  availableStock: number;
   lowStockThreshold: number;
   availabilityStatus: string;
 };

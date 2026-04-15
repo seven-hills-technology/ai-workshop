@@ -1,7 +1,17 @@
 import { Product } from './entities/product.entity';
 
+export type ProductListItem = Product & {
+  availableStock: number;
+  reservedStock: number;
+};
+
+export type ProductDetail = Product & {
+  availableStock: number;
+  reservedStock: number;
+};
+
 export type ProductListResponse = {
-  products: Product[];
+  products: ProductListItem[];
   total: number;
   skip: number;
   limit: number;

@@ -15,6 +15,7 @@ import {
   BulkAdjustInput,
   BulkAdjustResult,
   InventoryUpdateInput,
+  ProductDetail,
   ProductListQuery,
   ProductListResponse,
 } from './product.types';
@@ -55,7 +56,7 @@ export class ProductsController {
   }
 
   @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number): Promise<Product> {
+  findOne(@Param('id', ParseIntPipe) id: number): Promise<ProductDetail> {
     return this.products.findOne(id);
   }
 }
